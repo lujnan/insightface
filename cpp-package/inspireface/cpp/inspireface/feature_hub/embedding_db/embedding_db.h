@@ -51,8 +51,8 @@ public:
     EmbeddingDB &operator=(EmbeddingDB &&) = delete;
 
     // Insert a single vector
-    bool InsertVector(int64_t id, const std::vector<float> &vector, int64_t &allocId);
-    bool InsertVector(const std::vector<float> &vector, int64_t &allocId);  // For auto-increment mode
+    bool InsertVector(int64_t id, const std::vector<float> &vector, int64_t &allocId, const std::string &tag);
+    bool InsertVector(const std::vector<float> &vector, int64_t &allocId, const std::string& tag);  // For auto-increment mode
 
     // Batch insert vectors
     std::vector<int64_t> BatchInsertVectors(const std::vector<VectorData> &vectors);
@@ -75,6 +75,10 @@ public:
         return idMode_;
     }
 
+    bool HasTag(const std::string &tag) const;
+
+    void DelTag(const std::string &tag) const;
+
     bool IsInitialized() const {
         return initialized_;
     }
@@ -88,10 +92,16 @@ public:
     }
 
     std::vector<float> GetVector(int64_t id) const;
+    std::vector<float> GetVector(const std::string &tag) const;
 
     void ShowTable();
 
     std::vector<int64_t> GetAllIds();
+    std::vector<std::string> GetAllTags();
+
+    void DeleteAllVectors() {
+        ExecuteSQL("DELETE FROM " + tableName_);
+    }
 
 private:
     // Constructor: add ID mode parameter

@@ -82,7 +82,7 @@ int main() {
     featureIdentity.feature = &feature;
     featureIdentity.id = -1;
     HFaceId result_id;
-    ret = HFFeatureHubInsertFeature(featureIdentity, &result_id);
+    ret = HFFeatureHubInsertFeature(featureIdentity, &result_id, "test");
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Insert feature error: %d", ret);
         return ret;

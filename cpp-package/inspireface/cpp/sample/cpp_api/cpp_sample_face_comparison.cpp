@@ -50,6 +50,9 @@ int main(int argc, char** argv) {
     session->FaceFeatureExtract(process1, results1[0], feature1);
     session->FaceFeatureExtract(process2, results2[0], feature2);
 
+    std::cout << "feature1 size: " << feature1.embedding.size() << std::endl;
+    std::cout << "feature2 size: " << feature2.embedding.size() << std::endl;
+
     // Compare
     float similarity;
     INSPIREFACE_FEATURE_HUB->CosineSimilarity(feature1.embedding, feature2.embedding, similarity);

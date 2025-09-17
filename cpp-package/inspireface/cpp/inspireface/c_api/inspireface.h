@@ -1043,7 +1043,7 @@ HYPER_CAPI_EXPORT extern HResult HFGetFeatureLength(HPInt32 num);
  * @param featureIdentity The face feature identity to be inserted.
  * @return HResult indicating the success or failure of the operation.
  */
-HYPER_CAPI_EXPORT extern HResult HFFeatureHubInsertFeature(HFFaceFeatureIdentity featureIdentity, HPFaceId allocId);
+HYPER_CAPI_EXPORT extern HResult HFFeatureHubInsertFeature(HFFaceFeatureIdentity featureIdentity, HPFaceId allocId, const char* tag);
 
 /**
  * @brief Search for the most similar face feature in the features group.

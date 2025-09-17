@@ -204,6 +204,7 @@ int32_t FeatureHubDB::SearchFaceFeature(const Embedded &queryFeature, FaceSearch
         auto &searched = results[0];
         searchResult.similarity = searched.similarity;
         searchResult.id = searched.id;
+        searchResult.tag = searched.tag;
         if (returnFeature) {
             searchResult.feature = searched.feature;
             pImpl->m_search_face_feature_cache_ = searched.feature;
@@ -246,14 +247,14 @@ int32_t FeatureHubDB::SearchFaceFeatureTopK(const Embedded &queryFeature, std::v
     return HSUCCEED;
 }
 
-int32_t FeatureHubDB::FaceFeatureInsert(const std::vector<float> &feature, int32_t id, int64_t &result_id) {
+int32_t FeatureHubDB::FaceFeatureInsert(const std::vector<float> &feature, int32_t id, int64_t &result_id, const std::string &tag) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!pImpl->m_enable_) {
         INSPIRE_LOGE("FeatureHub is disabled, please enable it before it can be served");
         return HERR_FT_HUB_DISABLE;
     }
 
-    bool ret = EMBEDDING_DB::GetInstance().InsertVector(id, feature, result_id);
+    bool ret = EMBEDDING_DB::GetInstance().InsertVector(id, feature, result_id, tag);
     if (!ret) {
         result_id = -1;
         return HERR_FT_HUB_INSERT_FAILURE;
@@ -350,6 +351,40 @@ void FeatureHubDB::SetRecognitionSearchMode(SearchMode mode) {
     pImpl->m_search_mode_ = mode;
 }
 
+bool FeatureHubDB::HasTag(const std::string &tag) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!pImpl->m_enable_) {
+        INSPIRE_LOGW("FeatureHub is disabled, please enable it before it can be served");
+        return false;
+    }
+    return EMBEDDING_DB::GetInstance().HasTag(tag);
+}
+
+int32_t FeatureHubDB::DelTag(const std::string &tag) const { 
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!pImpl->m_enable_) {
+        INSPIRE_LOGW("FeatureHub is disabled, please enable it before it can be served");
+        return HERR_FT_HUB_DISABLE;
+    }
+    EMBEDDING_DB::GetInstance().DelTag(tag);
+    return HSUCCEED;
+}
+
+int32_t FeatureHubDB::GetFaceFeature(const std::string &tag, std::vector<float> &feature) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!pImpl->m_enable_) {
+        INSPIRE_LOGW("FeatureHub is disabled, please enable it before it can be served");
+        return HERR_FT_HUB_DISABLE;
+    }
+
+    feature = EMBEDDING_DB::GetInstance().GetVector(tag);
+    if (feature.empty()) {
+        return HERR_FT_HUB_NOT_FOUND_FEATURE;
+    }
+
+    return HSUCCEED;
+}
+
 // =========== Getter ===========
 
 const Embedded &FeatureHubDB::GetSearchFaceFeatureCache() const {
@@ -370,6 +405,23 @@ std::vector<int64_t> &FeatureHubDB::GetTopKCustomIdsCache() {
 
 std::vector<int64_t> &FeatureHubDB::GetExistingIds() {
     return pImpl->m_all_ids_;
+}
+
+int32_t FeatureHubDB::GetExistingTags(std::vector<std::string> &tags) {
+    if (!pImpl->m_enable_) {
+        INSPIRE_LOGE("FeatureHub is disabled, please enable it before it can be served");
+        return HERR_FT_HUB_DISABLE;
+    }
+    tags = EMBEDDING_DB::GetInstance().GetAllTags();
+    return HSUCCEED;
+}
+
+void FeatureHubDB::DeleteAllVectors() {
+    if (!pImpl->m_enable_) {
+        INSPIRE_LOGE("FeatureHub is disabled, please enable it before it can be served");
+        return;
+    }
+    EMBEDDING_DB::GetInstance().DeleteAllVectors();
 }
 
 }  // namespace inspire

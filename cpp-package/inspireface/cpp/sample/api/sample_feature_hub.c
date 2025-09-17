@@ -77,7 +77,7 @@ int main() {
     feature.size = sizeof(FT) / sizeof(FT[0]);
     HFFaceFeatureIdentity identity = {0};
     identity.feature = &feature;
-    ret = HFFeatureHubInsertFeature(identity, &result_id);
+    ret = HFFeatureHubInsertFeature(identity, &result_id, "test");
     if (ret != HSUCCEED) {
         HFLogPrint(HF_LOG_ERROR, "Insert feature error: %d", ret);
         return ret;

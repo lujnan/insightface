@@ -38,16 +38,16 @@ cd ${BUILD_FOLDER_PATH}
 
 cmake -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DISF_BUILD_WITH_SAMPLE=OFF \
+  -DISF_BUILD_WITH_SAMPLE=ON \
   -DISF_BUILD_WITH_TEST=OFF \
   -DISF_ENABLE_BENCHMARK=OFF \
   -DISF_ENABLE_USE_LFW_DATA=OFF \
   -DISF_ENABLE_TEST_EVALUATION=OFF \
-  -DISF_BUILD_SHARED_LIBS=ON \
+  -DISF_BUILD_SHARED_LIBS=OFF \
   -Wno-dev \
   ${SCRIPT_DIR}
 
-make -j4
-make install
+#make -j4
+#make install
 
-move_install_files "$(pwd)"
+#move_install_files "$(pwd)"

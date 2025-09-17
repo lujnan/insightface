@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include "embedding_db.h"
 #include "sqlite-vec.h"
 #include "isf_check.h"
@@ -34,7 +35,7 @@ EmbeddingDB::EmbeddingDB(const std::string &dbPath, size_t vectorDim, const std:
 
     // Create vector table
     std::string createTableSQL = "CREATE VIRTUAL TABLE IF NOT EXISTS " + tableName_ + " USING vec0(embedding float[" + std::to_string(vectorDim_) +
-                                 "] distance_metric=" + distanceMetric + ")";
+                                 "] distance_metric=" + distanceMetric + ", tag TEXT NOT NULL UNIQUE)";
 
     ExecuteSQL(createTableSQL);
     initialized_ = true;
@@ -46,21 +47,21 @@ EmbeddingDB::~EmbeddingDB() {
     }
 }
 
-bool EmbeddingDB::InsertVector(const std::vector<float> &vector, int64_t &allocId) {
+bool EmbeddingDB::InsertVector(const std::vector<float> &vector, int64_t &allocId, const std::string &tag) {
     std::lock_guard<std::mutex> lock(dbMutex_);
-    return InsertVector(0, vector, allocId);  // In auto-increment mode, the passed ID is ignored
+    return InsertVector(0, vector, allocId, tag);  // In auto-increment mode, the passed ID is ignored
 }
 
-bool EmbeddingDB::InsertVector(int64_t id, const std::vector<float> &vector, int64_t &allocId) {
+bool EmbeddingDB::InsertVector(int64_t id, const std::vector<float> &vector, int64_t &allocId, const std::string &tag) {
     CheckVectorDimension(vector);
 
     sqlite3_stmt *stmt;
     std::string sql;
 
     if (idMode_ == IdMode::AUTO_INCREMENT) {
-        sql = "INSERT INTO " + tableName_ + "(embedding) VALUES (?)";
+        sql = "INSERT INTO " + tableName_ + "(embedding, tag) VALUES (?, ?)";
     } else {
-        sql = "INSERT INTO " + tableName_ + "(rowid, embedding) VALUES (?, ?)";
+        sql = "INSERT INTO " + tableName_ + "(rowid, embedding, tag) VALUES (?, ?, ?)";
     }
 
     int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
@@ -73,9 +74,11 @@ bool EmbeddingDB::InsertVector(int64_t id, const std::vector<float> &vector, int
 
     if (idMode_ == IdMode::AUTO_INCREMENT) {
         sqlite3_bind_blob(stmt, 1, vector.data(), vector.size() * sizeof(float), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, tag.c_str(), -1, SQLITE_STATIC);
     } else {
         sqlite3_bind_int64(stmt, 1, id);
         sqlite3_bind_blob(stmt, 2, vector.data(), vector.size() * sizeof(float), SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, tag.c_str(), -1, SQLITE_STATIC);
     }
 
     rc = sqlite3_step(stmt);
@@ -116,6 +119,32 @@ std::vector<float> EmbeddingDB::GetVector(int64_t id) const {
     return result;
 }
 
+std::vector<float> EmbeddingDB::GetVector(const std::string &tag) const {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+
+    sqlite3_stmt *stmt;
+    std::string sql = "SELECT embedding FROM " + tableName_ + " WHERE tag = ?";
+
+    int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
+    CheckSQLiteError(rc, db_);
+
+    sqlite3_bind_text(stmt, 1, tag.c_str(), -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        // throw std::runtime_error("Vector with tag " + tag + " not found");
+        return {};
+    }
+
+    const float *blob_data = static_cast<const float *>(sqlite3_column_blob(stmt, 0));
+    size_t blob_size = sqlite3_column_bytes(stmt, 0) / sizeof(float);
+    std::vector<float> result(blob_data, blob_data + blob_size);
+
+    sqlite3_finalize(stmt);
+    return result;
+}
+
 std::vector<int64_t> EmbeddingDB::BatchInsertVectors(const std::vector<VectorData> &vectors) {
     ExecuteSQL("BEGIN");
     std::vector<int64_t> insertedIds;
@@ -123,7 +152,7 @@ std::vector<int64_t> EmbeddingDB::BatchInsertVectors(const std::vector<VectorDat
 
     for (const auto &data : vectors) {
         int64_t id = 0;
-        bool ret = InsertVector(data.id, data.vector, id);
+        bool ret = InsertVector(data.id, data.vector, id, "");
         INSPIREFACE_CHECK_MSG(ret, "Failed to insert vector");
         insertedIds.push_back(id);
     }
@@ -139,7 +168,7 @@ std::vector<int64_t> EmbeddingDB::BatchInsertVectors(const std::vector<std::vect
 
     for (const auto &vector : vectors) {
         int64_t id = 0;
-        bool ret = InsertVector(0, vector, id);
+        bool ret = InsertVector(0, vector, id, "");
         INSPIREFACE_CHECK_MSG(ret, "Failed to insert vector");
         insertedIds.push_back(id);
     }
@@ -195,7 +224,7 @@ std::vector<FaceSearchResult> EmbeddingDB::SearchSimilarVectors(const std::vecto
     std::string sql;
     if (return_feature) {
         sql =
-          "SELECT rowid, embedding, 1.0 - distance as similarity "
+          "SELECT rowid, embedding, 1.0 - distance as similarity, tag "
           "FROM " +
           tableName_ +
           " "
@@ -204,7 +233,7 @@ std::vector<FaceSearchResult> EmbeddingDB::SearchSimilarVectors(const std::vecto
           "LIMIT ?";
     } else {
         sql =
-          "SELECT rowid, 1.0 - distance as similarity "
+          "SELECT rowid, 1.0 - distance as similarity, tag "
           "FROM " +
           tableName_ +
           " "
@@ -228,8 +257,10 @@ std::vector<FaceSearchResult> EmbeddingDB::SearchSimilarVectors(const std::vecto
             size_t blob_size = sqlite3_column_bytes(stmt, 1) / sizeof(float);
             result.feature.assign(blob_data, blob_data + blob_size);
             result.similarity = sqlite3_column_double(stmt, 2);
+            result.tag = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 3));
         } else {
             result.similarity = sqlite3_column_double(stmt, 1);
+            result.tag = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2));
         }
         results.push_back(result);
     }
@@ -323,9 +354,9 @@ void EmbeddingDB::ShowTable() {
         vector_str += "...";
 
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "EmbeddingDB", "%lld | %s", id, vector_str.c_str());
+        __android_log_print(ANDROID_LOG_INFO, "EmbeddingDB", "%" PRId64 " | %s", id, vector_str.c_str());
 #else
-        printf("%lld | %s\n", id, vector_str.c_str());
+        printf("%" PRId64 " | %s\n", id, vector_str.c_str());
 #endif
     }
 
@@ -353,5 +384,60 @@ std::vector<int64_t> EmbeddingDB::GetAllIds() {
     sqlite3_finalize(stmt);
     return ids;
 }
+
+std::vector<std::string> EmbeddingDB::GetAllTags() {
+    if (!initialized_) {
+        INSPIRE_LOGE("EmbeddingDB is not initialized");
+        return {};
+    }
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    std::vector<std::string> tags;
+
+    sqlite3_stmt *stmt;
+    std::string sql = "SELECT tag FROM " + tableName_;
+
+    int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
+    CheckSQLiteError(rc, db_);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        tags.push_back(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+    }
+
+    sqlite3_finalize(stmt);
+    return tags;
+}
+
+bool EmbeddingDB::HasTag(const std::string &tag) const {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    sqlite3_stmt *stmt;
+    std::string sql = "SELECT 1 FROM " + tableName_ + " WHERE tag = ? LIMIT 1";
+
+    int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
+    CheckSQLiteError(rc, db_);
+
+    sqlite3_bind_text(stmt, 1, tag.c_str(), -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+    bool exists = (rc == SQLITE_ROW);
+    sqlite3_finalize(stmt);
+
+    return exists;
+}
+
+void EmbeddingDB::DelTag(const std::string &tag) const {
+    std::lock_guard<std::mutex> lock(dbMutex_);
+    sqlite3_stmt *stmt;
+    std::string sql = "DELETE FROM " + tableName_ + " WHERE tag = ?";
+
+    int rc = sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr);
+    CheckSQLiteError(rc, db_);
+
+    sqlite3_bind_text(stmt, 1, tag.c_str(), -1, SQLITE_STATIC);
+
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    // CheckSQLiteError(rc == SQLITE_DONE ? SQLITE_OK : rc, db_);
+}
+
 
 }  // namespace inspire

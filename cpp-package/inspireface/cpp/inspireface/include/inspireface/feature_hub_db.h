@@ -120,7 +120,7 @@ public:
      * @param result_id Output parameter to store the resulting ID.
      * @return int32_t Status code of the insertion operation.
      */
-    int32_t FaceFeatureInsert(const std::vector<float>& feature, int32_t id, int64_t& result_id);
+    int32_t FaceFeatureInsert(const std::vector<float>& feature, int32_t id, int64_t& result_id, const std::string &tag);
 
     /**
      * @brief Removes a face feature by its ID.
@@ -237,6 +237,15 @@ public:
      */
     std::vector<int64_t>& GetExistingIds();
 
+    bool HasTag(const std::string &tag) const;
+
+    int32_t DelTag(const std::string &tag) const;
+
+    int32_t GetFaceFeature(const std::string &tag, std::vector<float>& feature);
+
+    int32_t GetExistingTags(std::vector<std::string> &tags);
+
+    void DeleteAllVectors();
 private:
     class Impl;
 

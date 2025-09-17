@@ -234,6 +234,7 @@ struct FaceSearchResult {
     int64_t id;
     double similarity;
     std::vector<float> feature;
+    std::string tag;
 };
 
 /** @struct FaceEmbedding

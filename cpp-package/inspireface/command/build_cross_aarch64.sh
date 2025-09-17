@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export ARM_CROSS_COMPILE_TOOLCHAIN=/home/lujnan/works/xsuper/rk3588-linux/buildroot/output/rockchip_rk3588_wx/host
+
 # Reusable function to handle 'install' directory operations
 move_install_files() {
     local root_dir="$1"
@@ -41,21 +43,23 @@ cmake -DCMAKE_SYSTEM_NAME=Linux \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
   -DCMAKE_SYSTEM_VERSION=1 \
   -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-  -DCMAKE_C_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-linux-gnu-gcc \
-  -DCMAKE_CXX_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-linux-gnu-g++ \
-  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -flax-vector-conversions" \
+  -DCMAKE_C_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-gcc \
+  -DCMAKE_CXX_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-g++ \
+  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -fPIC -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
+  -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -fPIC -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
   -DTARGET_PLATFORM=armlinux \
   -DISF_BUILD_LINUX_AARCH64=ON \
   -DISF_BUILD_LINUX_ARM7=OFF \
-  -DISF_BUILD_WITH_SAMPLE=OFF \
+  -DISF_BUILD_WITH_SAMPLE=ON \
   -DISF_BUILD_WITH_TEST=OFF \
   -DISF_ENABLE_BENCHMARK=OFF \
+  -DISF_ENABLE_OPENCV=OFF \
   -DISF_ENABLE_USE_LFW_DATA=OFF \
   -DISF_ENABLE_TEST_EVALUATION=OFF \
   -Wno-dev \
-  -DISF_BUILD_SHARED_LIBS=ON ${SCRIPT_DIR}
+  -DISF_BUILD_SHARED_LIBS=OFF ${SCRIPT_DIR}
 
-make -j4
-make install
+#make -j4
+#make install
 
-move_install_files "$(pwd)"
+#move_install_files "$(pwd)"
