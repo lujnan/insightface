@@ -37,13 +37,15 @@ SCRIPT_DIR=$(pwd)  # Project dir
 cd ${SCRIPT_DIR}
 
 
-BUILD_FOLDER_PATH="build/inspireface-linux-aarch64-rk356x-rk3588${TAG}"
+BUILD_FOLDER_PATH="build/inspireface-linux-aarch64-xsuper-rk3588${TAG}"
 
 mkdir -p ${BUILD_FOLDER_PATH}
 # shellcheck disable=SC2164
 cd ${BUILD_FOLDER_PATH}
 
 # export ARM_CROSS_COMPILE_TOOLCHAIN=/host/software/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu
+
+echo "=====>lujnan<==CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
 
 cmake -DCMAKE_SYSTEM_NAME=Linux \
   -DCMAKE_BUILD_TYPE=Release \
@@ -52,7 +54,8 @@ cmake -DCMAKE_SYSTEM_NAME=Linux \
   -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
   -DCMAKE_C_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-gcc \
   -DCMAKE_CXX_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-g++ \
-  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -flax-vector-conversions" \
+  -DCMAKE_C_FLAGS="${CMAKE_CXX_FLAGS} -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
+  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
   -DTARGET_PLATFORM=armlinux \
   -DISF_BUILD_LINUX_AARCH64=ON \
   -DISF_BUILD_LINUX_ARM7=OFF \
