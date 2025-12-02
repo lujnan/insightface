@@ -32,17 +32,13 @@ else
 fi
 
 SCRIPT_DIR=$(pwd)  # Project dir
-
-
 cd ${SCRIPT_DIR}
-
 
 BUILD_FOLDER_PATH="build/inspireface-linux-aarch64-xsuper-rk3588${TAG}"
 
 mkdir -p ${BUILD_FOLDER_PATH}
 # shellcheck disable=SC2164
 cd ${BUILD_FOLDER_PATH}
-
 # export ARM_CROSS_COMPILE_TOOLCHAIN=/host/software/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu
 
 echo "=====>lujnan<==CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
@@ -54,25 +50,19 @@ cmake -DCMAKE_SYSTEM_NAME=Linux \
   -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
   -DCMAKE_C_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-gcc \
   -DCMAKE_CXX_COMPILER=$ARM_CROSS_COMPILE_TOOLCHAIN/bin/aarch64-buildroot-linux-gnu-g++ \
-  -DCMAKE_C_FLAGS="${CMAKE_CXX_FLAGS} -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
-  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
+  -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS} -fPIC -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
+  -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -fPIC -mcpu=cortex-a76.cortex-a55 -march=armv8.2-a -mtune=cortex-a76.cortex-a55 -ffunction-sections -fdata-sections -fno-trapping-math -mno-outline-atomics -flax-vector-conversions" \
   -DTARGET_PLATFORM=armlinux \
   -DISF_BUILD_LINUX_AARCH64=ON \
   -DISF_BUILD_LINUX_ARM7=OFF \
-  -DMNN_SEP_BUILD=off \
-  -DISF_ENABLE_RKNN=ON \
-  -DISF_RK_DEVICE_TYPE=RK356X \
-  -DISF_RKNPU_MAJOR=rknpu2 \
-  -DISF_RK_COMPILER_TYPE=aarch64 \
-  -DISF_ENABLE_RGA=ON \
-  -DISF_ENABLE_COST_TIME=OFF \
   -DISF_BUILD_WITH_SAMPLE=ON \
   -DISF_BUILD_WITH_TEST=OFF \
   -DISF_ENABLE_BENCHMARK=OFF \
+  -DISF_ENABLE_OPENCV=OFF \
   -DISF_ENABLE_USE_LFW_DATA=OFF \
   -DISF_ENABLE_TEST_EVALUATION=OFF \
   -Wno-dev \
-  -DISF_BUILD_SHARED_LIBS=ON ${SCRIPT_DIR}
+  -DISF_BUILD_SHARED_LIBS=OFF ${SCRIPT_DIR}
 
 #make -j4
 #make install
